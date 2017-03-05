@@ -1,0 +1,54 @@
+#!/usr/bin/python
+
+from jinja2.exceptions import TemplateNotFound
+import jinja2
+import sys, os
+import argparse
+
+import echomsg
+from echomsg import MessagesRegistry, parseFile
+
+if __name__ == '__main__':
+    registry = MessagesRegistry()
+
+    parser = argparse.ArgumentParser(description='Process some integers.')
+    parser.add_argument('files', metavar='file', type=str, action='append',
+                        help='Message files to process')
+
+    parser.add_argument('-p', metavar='paths', type=str, action='append', default=[],
+                        help='Message files to process', dest='paths')
+
+    parser.add_argument('-o', metavar='output', type=str,
+                        help='Output directory', dest='output', default = ".")
+
+    parser.add_argument('-O', metavar='name', type=str,
+                        help='Output filename base', dest='basename')
+
+    args = parser.parse_args()
+
+    args.paths.insert(0, os.path.join(os.path.dirname(echomsg.__file__), "messages"))
+    args.paths.append(".")
+
+    registry.namespace = ''
+
+    for f in args.files:
+        parseFile(f, registry, args.paths)
+
+    if not args.basename:
+        args.basename = os.path.splitext(os.path.basename(args.files[0]))[0]
+
+    loader = jinja2.FileSystemLoader(os.path.join(os.path.dirname(echomsg.__file__), "templates"))
+    env = jinja2.Environment(loader=loader)
+    cpp_template = env.get_template('cpp.tpl')
+    python_template = env.get_template('python.tpl')
+    context = {}
+    context['basename'] = args.basename
+    context['namespace'] = registry.namespace
+    context['registry'] = registry
+
+    with open(os.path.join(args.output, "%s.h" % args.basename), "w") as out:
+        out.write(cpp_template.render(context))
+
+    with open(os.path.join(args.output, "%s.py" % args.basename), "w") as out:
+        out.write(python_template.render(context))
+
