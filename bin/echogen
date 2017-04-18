@@ -6,49 +6,58 @@ import sys, os
 import argparse
 
 import echomsg
-from echomsg import MessagesRegistry, parseFile
+from echomsg import MessagesRegistry, parseFile, formatConstant
 
 if __name__ == '__main__':
-    registry = MessagesRegistry()
 
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('files', metavar='file', type=str, action='append',
+    parser.add_argument('files', metavar='file', type=str, nargs='+',
                         help='Message files to process')
 
     parser.add_argument('-p', metavar='paths', type=str, action='append', default=[],
                         help='Message files to process', dest='paths')
 
-    parser.add_argument('-o', metavar='output', type=str,
-                        help='Output directory', dest='output', default = ".")
+    parser.add_argument('--python-outdir', metavar='dir', type=str,
+                        help='Output directory for Python files', dest='outdir_python')
 
-    parser.add_argument('-O', metavar='name', type=str,
-                        help='Output filename base', dest='basename')
+    parser.add_argument('--cpp-outdir', metavar='dir', type=str,
+                        help='Output directory for C++ files', dest='outdir_cpp')
 
     args = parser.parse_args()
 
     args.paths.insert(0, os.path.join(os.path.dirname(echomsg.__file__), "messages"))
     args.paths.append(".")
 
-    registry.namespace = ''
-
-    for f in args.files:
-        parseFile(f, registry, args.paths)
-
-    if not args.basename:
-        args.basename = os.path.splitext(os.path.basename(args.files[0]))[0]
-
     loader = jinja2.FileSystemLoader(os.path.join(os.path.dirname(echomsg.__file__), "templates"))
     env = jinja2.Environment(loader=loader)
+    env.filters["cppconstant"] = lambda x: formatConstant(x, language="cpp")
+    env.filters["pyconstant"] = lambda x: formatConstant(x, language="python")
     cpp_template = env.get_template('cpp.tpl')
     python_template = env.get_template('python.tpl')
-    context = {}
-    context['basename'] = args.basename
-    context['namespace'] = registry.namespace
-    context['registry'] = registry
 
-    with open(os.path.join(args.output, "%s.h" % args.basename), "w") as out:
-        out.write(cpp_template.render(context))
+    for f in args.files:
+        registry = MessagesRegistry()
+        registry.namespace = ''
+        try:
+            parseFile(f, registry, args.paths)
+        except Exception, e:
+            print "Parsing exception for %s: %s" % (f, str(e))
+            sys.exit(1)
 
-    with open(os.path.join(args.output, "%s.py" % args.basename), "w") as out:
-        out.write(python_template.render(context))
+        context = {}
+        context['basename'] = os.path.splitext(os.path.basename(f))[0]
+        context['namespace'] = registry.namespace
+        context['registry'] = registry
+
+        if not args.outdir_cpp is None:
+            if not os.path.exists(args.outdir_cpp):
+                os.makedirs(args.outdir_cpp)
+            with open(os.path.join(args.outdir_cpp, "%s.h" % context['basename']), "w") as out:
+                out.write(cpp_template.render(context))
+
+        if not args.outdir_python is None:
+            if not os.path.exists(args.outdir_python):
+                os.makedirs(args.outdir_python)
+            with open(os.path.join(args.outdir_python, "%s.py" % context['basename']), "w") as out:
+                out.write(python_template.render(context))
 

@@ -1,5 +1,6 @@
 import os
 import sys
+import six
 import hashlib
 
 from pyparsing import *
@@ -7,6 +8,24 @@ from collections import OrderedDict
 
 def make_keyword(kwd_str, kwd_value):
     return Keyword(kwd_str).setParseAction(replaceWith(kwd_value))
+
+def formatConstant(value, language="cpp"):
+    if value is None and language == "cpp":
+        return ""
+    if value is None and language == "python":
+        return "None"
+    elif isinstance(value, bool):
+        if language == "cpp":
+            return "true" if value else "false"
+        if language == "python":
+            return "True" if value else "False"
+    if isinstance(value, six.integer_types):
+        return str(value)
+    if isinstance(value, float):
+        return "%.f" % (value)
+    elif isinstance(value, six.string_types):
+        return "\"%s\"" % value
+    return str(value)
 
 class SemanticError(Exception):
     pass
@@ -16,13 +35,13 @@ class MessagesRegistry(object):
     def __init__(self):
         self.enums = OrderedDict()
         self.types = OrderedDict()
-        self.types['int'] = {"primitive" : True, "python" : "int", "cpp": "int"}
-        self.types['long'] = {"primitive" : True, "python" : "long", "cpp": "long"}
-        self.types['float'] = {"primitive" : True, "python" : "float", "cpp": "float"}
-        self.types['double'] = {"primitive" : True, "python" : "echolib.double", "cpp": "echolib.double"}
-        self.types['bool'] = {"primitive" : True, "python" : "bool", "cpp": "bool"}
-        self.types['char'] = {"primitive" : True, "python" : "echolib.char", "cpp": "char"}
-        self.types['string'] = {"primitive" : True, "python" : "str", "cpp": "string"}
+        self.types['int'] = {"primitive" : True, "python" : "int", "cpp": "int", "default": 0}
+        self.types['long'] = {"primitive" : True, "python" : "long", "cpp": "long", "default": 0}
+        self.types['float'] = {"primitive" : True, "python" : "float", "cpp": "float", "default": 0.0}
+        self.types['double'] = {"primitive" : True, "python" : "echolib.double", "cpp": "echolib.double", "default": 0.0}
+        self.types['bool'] = {"primitive" : True, "python" : "bool", "cpp": "bool", "default": False}
+        self.types['char'] = {"primitive" : True, "python" : "echolib.char", "cpp": "char", "default": '\0'}
+        self.types['string'] = {"primitive" : True, "python" : "str", "cpp": "string", "default": ""}
         self.structs = OrderedDict()
         self.messages = []
         self.namespace = None
@@ -60,7 +79,10 @@ class MessagesRegistry(object):
 
 def processValue(value):
     if "numeric" in value:
-        return float(value["numeric"])
+        try:
+            return int(value["numeric"])
+        except ValueError:
+            return float(value["numeric"])
     elif "bool" in value:
         return bool(value["bool"])
     else:

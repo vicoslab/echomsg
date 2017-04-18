@@ -20,21 +20,18 @@ echolib.registerType({{ name }}, lambda x: {{ name }}.reverse_mapping[x.readInt(
 class {{ name }}(object):
 	def __init__(self):
 		{% for k, v in fields.items() -%}
+		{% set defval = v["default"] if not v["default"] is none else registry.types[v["type"]]["default"] %}
 		{% if v['array'] and v['length'] is none -%}
 		self.{{ k }} = []
 		{% elif v['array'] and not v['length'] is none -%}
 		self.{{ k }} = []
 		{% elif registry.types[v["type"]]["primitive"] -%}
-		{% if v["default"] is string -%}
-		self.{{ k }} = "{{ v['default'] }}";
-		{% elif v["default"] is none -%}
-		{% else -%}
-		self.{{ k }} = {{ v['default'] }};
-		{% endif -%}
+		self.{{ k }} = {{ defval|pyconstant }};
 		{% else -%}
 		self.{{ k }} = {{ v["type"] }}();
 		{% endif -%}
 		{%- endfor %}
+		pass
 
 	@staticmethod
 	def read(reader):
@@ -57,6 +54,7 @@ class {{ name }}(object):
 		echolib.writeType({{ registry.types[v["type"]]["python"] }}, writer, obj.{{ k }})
 		{% endif %}
 		{% endfor %}
+		pass
 
 echolib.registerType({{ name }}, {{ name }}.read, {{ name }}.write)
 

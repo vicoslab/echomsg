@@ -27,14 +27,13 @@ class {{ name }} {
 public:
 	{{ name }}() {
         {% for k, v in fields.items() -%}
+        {% set defval = v["default"] if not v["default"] is none else registry.types[v["type"]]["default"] %}
 	    {% if registry.types[v["type"]]["primitive"] -%}
-             {% if v["default"] is string -%}
-	            {{ k }} = "{{ v['default'] }}";
-             {% elif v["default"] is none -%}
-	         {% else -%}
-	            {{ k }} = {{ v['default'] }};
-	         {% endif -%}
-	    {% else -%}
+	        {{ k }} = {{ defval|cppconstant }};
+	    {% elif v['array'] -%}
+            {% if not v['length'] is none -%}
+            {% endif -%}
+        {% else %}
         {{ k }} = {{ v["type"] }}();
 	    {% endif -%}
 	    {%- endfor %}

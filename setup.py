@@ -10,6 +10,6 @@ setup(name='EchoMsg',
 	url='https://github.com/vicoslab/echomsg/',
 	packages=['echomsg', 'echomsg.templates', 'echomsg.messages'],
 	scripts=["bin/echogen"],
-    requires=['pyparsing', 'jinja2'],
+    requires=['pyparsing', 'jinja2', 'six'],
     package_data={'echomsg.templates': ['*.tpl'], 'echomsg.messages': ['*.msg']}
 )
