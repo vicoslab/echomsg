@@ -6,13 +6,20 @@ import echolib
 
 def enum(name, enums):
     reverse = dict((value, key) for key, value in enums.iteritems())
-    enums['reverse_mapping'] = reverse
+    enums["str"] = staticmethod(lambda x: reverse[x])
     return type(name, (), enums)
+
+def enum_conversion(enum, obj):
+    if isinstance(obj, int):
+		return obj
+    if isinstance(obj, str):
+		return getattr(enum, obj)
+    return 0
 
 {% for name, values in registry.enums.items() %}
 {{ name }} = enum("{{ name }}", { {% for k, v in values.items() %}'{{k}}' : {{v}}{% if not loop.last %}, {% endif %}{% endfor %} })
 
-echolib.registerType({{ name }}, lambda x: {{ name }}.reverse_mapping[x.readInt()], lambda x, o: x.writeInt(getattr({{ name }}, o)))
+echolib.registerType({{ name }}, lambda x: x.readInt(), lambda x, o: x.writeInt(o), lambda x: enum_conversion({{ name }}, x))
 
 {% endfor %}
 
