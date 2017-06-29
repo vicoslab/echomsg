@@ -15,7 +15,7 @@ namespace {{ n }} {
 {% endif %}
 
 {% for name, values in registry.enums.items() %}
-enum {{ name }} { {% for v in values.keys() %}{{v}}{% if not loop.last %}, {% endif %}{% endfor %} };
+enum {{ name }} { {% for v in values.keys() %}{{ name|upper }}_{{v}}{% if not loop.last %}, {% endif %}{% endfor %} };
 {% endfor %}
 
 {% for name in registry.structs.keys() -%}
@@ -28,8 +28,8 @@ public:
 	{{ name }}() {
         {% for k, v in fields.items() -%}
         {% set defval = v["default"] if not v["default"] is none else registry.types[v["type"]]["default"] %}
-	    {% if registry.types[v["type"]]["primitive"] -%}
-	        {{ k }} = {{ defval|cppconstant }};
+	    {% if registry.types[v["type"]]["primitive"] and not v["array"] -%}
+	        {{ k }} = {{ defval|cppconstant }}; // Constant
 	    {% elif v['array'] -%}
             {% if not v['length'] is none -%}
             {% endif -%}
@@ -64,7 +64,7 @@ namespace echolib {
 template <> inline void read(MessageReader& reader, {{ cppnamespace }}{{ name }}& dst) {
 	switch (reader.read<int>()) {
 	{% for k, v in values.items() -%}
-		case {{ v }}: dst = {{ cppnamespace }}{{ k }}; break;
+		case {{ v }}: dst = {{ cppnamespace }}{{ name|upper }}_{{ k }}; break;
 	{% endfor %}
 	}
 }
@@ -72,7 +72,7 @@ template <> inline void read(MessageReader& reader, {{ cppnamespace }}{{ name }}
 template <> inline void write(MessageWriter& writer, const {{ cppnamespace }}{{ name }}& src) {
 	switch (src) {
 	{% for k, v in values.items() -%}
-		case {{ cppnamespace }}{{ k }}: writer.write<int>({{ v }}); return;
+		case {{ cppnamespace }}{{ name|upper }}_{{ k }}: writer.write<int>({{ v }}); return;
 	{% endfor %}
 	}
 }

@@ -45,6 +45,7 @@ class MessagesRegistry(object):
         self.structs = OrderedDict()
         self.messages = []
         self.namespace = None
+        self.files = []
 
     def add_enum(self, name, values):
         self.add_type(name)
@@ -176,6 +177,14 @@ def parseFile(msgfile, registry, searchpath=[]):
             if os.path.exists(candidate) and os.path.isfile(candidate):
                 msgfile = candidate
                 break
+
+    print registry.files
+    print msgfile
+    if msgfile in registry.files:
+        print "%s already processed, ignoring." % msgfile
+        return
+
+    registry.files.append(msgfile)
 
     if not msgfile:
         raise IOError("File '%s' does not exist in search path" % base)
