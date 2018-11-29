@@ -15,3 +15,8 @@ structure Rotation3D {
 	float y = 0;
 	float z = 0;
 }
+
+structure Frame3D {
+	Point3D origin;
+	Rotation3D rotation;
+}
