@@ -178,8 +178,6 @@ def parseFile(msgfile, registry, searchpath=[]):
                 msgfile = candidate
                 break
 
-    print registry.files
-    print msgfile
     if msgfile in registry.files:
         print "%s already processed, ignoring." % msgfile
         return

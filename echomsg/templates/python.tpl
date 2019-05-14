@@ -25,18 +25,40 @@ echolib.registerType({{ name }}, lambda x: x.readInt(), lambda x, o: x.writeInt(
 
 {% for name, fields in registry.structs.items() %}
 class {{ name }}(object):
-	def __init__(self):
+	def __init__(self, 
+		{%- for k, v in fields.items() -%}{%- set defval = v["default"] if not v["default"] is none else registry.types[v["type"]]["default"] -%}
+		{%- if not loop.first %},
+		{%- endif -%}{%- if v['array'] and v['length'] is none -%}
+		{{ k }} = None
+		{%- elif v['array'] and not v['length'] is none -%}
+		{{ k }} = None
+		{%- elif registry.types[v["type"]]["primitive"] -%}
+		{{ k }} = {{ defval|pyconstant }}
+		{%- else -%}
+		{{ k }} = None
+		{%- endif -%}
+		{%- endfor -%}
+		):
 		{% for k, v in fields.items() -%}
-		{% set defval = v["default"] if not v["default"] is none else registry.types[v["type"]]["default"] %}
-		{% if v['array'] and v['length'] is none -%}
-		self.{{ k }} = []
-		{% elif v['array'] and not v['length'] is none -%}
-		self.{{ k }} = []
-		{% elif registry.types[v["type"]]["primitive"] -%}
-		self.{{ k }} = {{ defval|pyconstant }};
-		{% else -%}
-		self.{{ k }} = {{ v["type"] }}();
-		{% endif -%}
+		{%- set defval = v["default"] if not v["default"] is none else registry.types[v["type"]]["default"] -%}
+		{%- if v['array'] and v['length'] is none %}
+		if {{ k }} == None:
+			self.{{ k }} = []
+		else:
+			self.{{ k }} = {{ k }}
+		{%- elif v['array'] and not v['length'] is none %}
+		if {{ k }} == None:
+			self.{{ k }} = []
+		else:
+			self.{{ k }} = {{ k }}
+		{%- elif registry.types[v["type"]]["primitive"] %}
+		self.{{ k }} = {{ k }}
+		{%- else %}
+		if {{ k }} == None:
+			self.{{ k }} = {{ v["type"] }}()
+		else:
+			self.{{ k }} = {{ k }}
+		{%- endif -%}
 		{%- endfor %}
 		pass
 

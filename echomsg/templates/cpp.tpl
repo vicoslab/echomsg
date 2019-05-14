@@ -25,18 +25,27 @@ class {{ name }};
 {% for name, fields in registry.structs.items() %}
 class {{ name }} {
 public:
-	{{ name }}() {
+	{{ name }}(
+        {%- for k, v in fields.items() -%}
+        {%- set defval = v["default"] if not v["default"] is none else registry.types[v["type"]]["default"] -%}
+	    {%- if not loop.first %},{% endif -%}{%- if registry.types[v["type"]]["primitive"] and not v["array"] -%}
+	        {{ v["type"] }} {{ k }} = {{ defval|cppconstant }}
+	    {%- elif v['array'] -%}
+            {%- if v['length'] is none -%}
+            {{ v["type"] }} {{ k }}[{{ v['length'] }}] = {}
+            {%- else -%}
+			std::vector<{{ v["type"] }}> {{ k }} = std::vector<{{ v["type"] }}>()
+            {%- endif -%}
+        {%- else -%}
+        {{ v["type"] }} {{ k }} = {{ v["type"] }}()
+	    {%- endif -%}
+	    {%- endfor -%}
+	) {
+
         {% for k, v in fields.items() -%}
-        {% set defval = v["default"] if not v["default"] is none else registry.types[v["type"]]["default"] %}
-	    {% if registry.types[v["type"]]["primitive"] and not v["array"] -%}
-	        {{ k }} = {{ defval|cppconstant }}; // Constant
-	    {% elif v['array'] -%}
-            {% if not v['length'] is none -%}
-            {% endif -%}
-        {% else %}
-        {{ k }} = {{ v["type"] }}();
-	    {% endif -%}
-	    {%- endfor %}
+        this->{{ k }} = {{ k }};
+	    {% endfor -%}
+
     };
 	virtual ~{{ name }}() {};
 	{% for k, v in fields.items() -%}
