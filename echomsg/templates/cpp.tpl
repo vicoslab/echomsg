@@ -3,9 +3,26 @@
 #ifndef __{{ basename|upper }}_MSGS_H
 #define __{{ basename|upper }}_MSGS_H
 
-#include <echolib/message.h>
-#include <echolib/datatypes.h>
-#include <vector>
+{% for include in registry.get_sources() %}
+#include <{{ include }}>
+{% endfor %}
+
+namespace echolib {
+
+{% for name, type in registry.types.items() %}
+{%- if type.get_reader() and type.get_writer() %}
+
+template <> inline void read(MessageReader& reader, {{ type.get_container() }}& dst) {
+	dst = {{ type.get_reader() }}(reader);
+}
+
+template <> inline void write(MessageWriter& writer, const {{ type.get_container() }}& src) {
+	{{ type.get_writer() }}(writer, src);
+}
+{% endif -%}
+{% endfor %}
+
+}
 
 {% if namespace %}
 {% set cppnamespace = namespace.replace('.', '::') + '::' %}
@@ -27,17 +44,17 @@ class {{ name }} {
 public:
 	{{ name }}(
         {%- for k, v in fields.items() -%}
-        {%- set defval = v["default"] if not v["default"] is none else registry.types[v["type"]]["default"] -%}
-	    {%- if not loop.first %},{% endif -%}{%- if registry.types[v["type"]]["primitive"] and not v["array"] -%}
-	        {{ v["type"] }} {{ k }} = {{ defval|cppconstant }}
+        {%- set defval = v["default"] if not v["default"] is none else registry.types[v["type"]].get_default() -%}
+	    {%- if not loop.first %}, {% endif -%}{%- if not defval is none and not v["array"] -%}
+	        {{ registry.types[v["type"]].get_container() }} {{ k }} = {{ defval|constant }}
 	    {%- elif v['array'] -%}
             {%- if v['length'] is none -%}
-            {{ v["type"] }} {{ k }}[{{ v['length'] }}] = {}
+            {{ registry.types[v["type"]].get_container() }} {{ k }}[{{ v['length'] }}] = {}
             {%- else -%}
 			std::vector<{{ v["type"] }}> {{ k }} = std::vector<{{ v["type"] }}>()
             {%- endif -%}
         {%- else -%}
-        {{ v["type"] }} {{ k }} = {{ v["type"] }}()
+        {{ registry.types[v["type"]].get_container() }} {{ k }} = {{ v["type"] }}()
 	    {%- endif -%}
 	    {%- endfor -%}
 	) {
@@ -47,16 +64,18 @@ public:
 	    {% endfor -%}
 
     };
+    
 	virtual ~{{ name }}() {};
 	{% for k, v in fields.items() -%}
 	{% if v['array'] and v['length'] is none -%}
-	{{ v["type"] }} {{ k }}[{{ v['length'] }}];
+	{{ registry.types[v["type"]].get_container() }} {{ k }}[{{ v['length'] }}];
 	{% elif v['array'] and not v['length'] is none -%}
-	std::vector<{{ v["type"] }}> {{ k }};
+	std::vector<{{ registry.types[v["type"]].get_container() }}> {{ k }};
 	{% else -%}
-	{{ v["type"] }} {{ k }};
+	{{ registry.types[v["type"]].get_container() }} {{ k }};
 	{% endif -%}
 	{%- endfor %}
+
 };
 {% endfor %}
 
@@ -106,7 +125,7 @@ template <> inline void write(MessageWriter& writer, const {{ cppnamespace }}{{ 
 {% for name in registry.messages %}
 {% set metadata = registry.types[name] %}
 
-template <> inline string get_type_identifier<{{ cppnamespace }}{{ name }}>() { return string("{{ metadata['typehash'] }}"); }
+template <> inline string get_type_identifier<{{ cppnamespace }}{{ name }}>() { return string("{{ metadata.get_hash() }}"); }
 
 template<> inline shared_ptr<Message> echolib::Message::pack<{{ cppnamespace }}{{ name }} >(const {{ cppnamespace }}{{ name }} &data) {
     MessageWriter writer;

@@ -6,7 +6,27 @@ import sys, os
 import argparse
 
 import echomsg
-from echomsg import MessagesRegistry, parseFile, formatConstant
+from echomsg import MessagesRegistry, parseFile, formatConstant, DescriptionError, set_default_language
+
+def render_language(language, extension, registry, outdir):
+    loader = jinja2.FileSystemLoader(os.path.join(os.path.dirname(echomsg.__file__), "templates"))
+    env = jinja2.Environment(loader=loader)
+    env.filters["constant"] = lambda x: formatConstant(x, language=language)
+    template = env.get_template('{}.tpl'.format(language))
+
+    set_default_language(language)
+    
+    context = {}
+    context['basename'] = os.path.splitext(os.path.basename(f))[0]
+    context['namespace'] = registry.namespace
+    context['registry'] = registry
+
+    if not outdir is None:
+        if not os.path.exists(outdir):
+            os.makedirs(outdir)
+        with open(os.path.join(outdir, "{}.{}".format(context['basename'], extension)), "w") as out:
+            out.write(template.render(context))
+
 
 if __name__ == '__main__':
 
@@ -28,36 +48,18 @@ if __name__ == '__main__':
     args.paths.insert(0, os.path.join(os.path.dirname(echomsg.__file__), "messages"))
     args.paths.append(".")
 
-    loader = jinja2.FileSystemLoader(os.path.join(os.path.dirname(echomsg.__file__), "templates"))
-    env = jinja2.Environment(loader=loader)
-    env.filters["cppconstant"] = lambda x: formatConstant(x, language="cpp")
-    env.filters["pyconstant"] = lambda x: formatConstant(x, language="python")
-    cpp_template = env.get_template('cpp.tpl')
-    python_template = env.get_template('python.tpl')
-
     for f in args.files:
         registry = MessagesRegistry()
         registry.namespace = ''
         try:
             parseFile(f, registry, args.paths)
-        except Exception, e:
-            print "Parsing exception for %s: %s" % (f, str(e))
+        except DescriptionError, e:
+            print "Processing error: {}".format(e)
+            sys.exit(1)
+        except:
+            import traceback
+            traceback.print_exc()
             sys.exit(1)
 
-        context = {}
-        context['basename'] = os.path.splitext(os.path.basename(f))[0]
-        context['namespace'] = registry.namespace
-        context['registry'] = registry
-
-        if not args.outdir_cpp is None:
-            if not os.path.exists(args.outdir_cpp):
-                os.makedirs(args.outdir_cpp)
-            with open(os.path.join(args.outdir_cpp, "%s.h" % context['basename']), "w") as out:
-                out.write(cpp_template.render(context))
-
-        if not args.outdir_python is None:
-            if not os.path.exists(args.outdir_python):
-                os.makedirs(args.outdir_python)
-            with open(os.path.join(args.outdir_python, "%s.py" % context['basename']), "w") as out:
-                out.write(python_template.render(context))
-
+        render_language("cpp", "h", registry, args.outdir_cpp)
+        render_language("python", "py", registry, args.outdir_python)
