@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='EchoMsg',
-	version='0.1.5',
+	version='0.1.6',
 	description='Message generator for echolib.',
 	author='Luka Cehovin',
 	author_email='luka.cehovin@gmail.com',

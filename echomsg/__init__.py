@@ -125,8 +125,9 @@ class MessagesRegistry(object):
     def __init__(self):
         self.enums = OrderedDict()
         self.types = OrderedDict()
-        self.add_type(ExternalType("int", {"python" : "int", "cpp": "int"}, 0))
-        self.add_type(ExternalType("long", {"python" : "long", "cpp": "long"}, 0))
+        self.add_type(ExternalType("short", {"python" : "int", "cpp": "int16_t"}, 0))
+        self.add_type(ExternalType("int", {"python" : "int", "cpp": "int32_t"}, 0))
+        self.add_type(ExternalType("long", {"python" : "long", "cpp": "int64_t"}, 0))
         self.add_type(ExternalType("float", {"python" : "float", "cpp": "float"}, 0.0))
         self.add_type(ExternalType("double", {"python" : "echolib.double", "cpp": "double"}, 0.0))
         self.add_type(ExternalType("bool", {"python" : "bool", "cpp": "bool"}, False))
