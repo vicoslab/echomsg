@@ -11,5 +11,6 @@ setup(name='EchoMsg',
 	packages=['echomsg', 'echomsg.templates', 'echomsg.messages'],
 	scripts=["bin/echogen"],
     requires=['pyparsing', 'jinja2', 'six'],
-    package_data={'echomsg.templates': ['*.tpl'], 'echomsg.messages': ['*.msg']}
+    package_data={'echomsg.templates': ['*.tpl'], 'echomsg.messages': ['*.msg']},
+	python_requires='>=3.5'
 )

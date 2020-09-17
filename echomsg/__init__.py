@@ -2,6 +2,7 @@ import os
 import sys
 import six
 import hashlib
+import logging
 
 from pyparsing import *
 from collections import OrderedDict
@@ -9,6 +10,8 @@ from collections import OrderedDict
 LANGUAGES = ["cpp", "python"]
 
 default_language = "cpp"
+
+logger = logging.getLogger("echomsg")
 
 def set_default_language(language):
     if language in LANGUAGES:
@@ -111,7 +114,7 @@ def formatConstant(value, language="cpp"):
 class DescriptionError(Exception):
     
     def __init__(self, file, line, column, message):
-        super(Exception, self).__init__()
+        super().__init__()
         self.file = file
         self.line = line
         self.column = column
@@ -127,7 +130,7 @@ class MessagesRegistry(object):
         self.types = OrderedDict()
         self.add_type(ExternalType("short", {"python" : "int", "cpp": "int16_t"}, 0))
         self.add_type(ExternalType("int", {"python" : "int", "cpp": "int32_t"}, 0))
-        self.add_type(ExternalType("long", {"python" : "long", "cpp": "int64_t"}, 0))
+        self.add_type(ExternalType("long", {"python" : "echolib.long", "cpp": "int64_t"}, 0))
         self.add_type(ExternalType("float", {"python" : "float", "cpp": "float"}, 0.0))
         self.add_type(ExternalType("double", {"python" : "echolib.double", "cpp": "double"}, 0.0))
         self.add_type(ExternalType("bool", {"python" : "bool", "cpp": "bool"}, False))
@@ -160,7 +163,7 @@ class MessagesRegistry(object):
         
         typehash = hashlib.md5()
         for v in values:
-            typehash.update(v)
+            typehash.update(v.encode('utf-8'))
         self.add_type(Type(name, typehash.hexdigest()))
         self.enums[name] = values
 
@@ -170,7 +173,7 @@ class MessagesRegistry(object):
             t = v['type']
             if not t in self.types:
                 raise RuntimeError('Unknown type: ' + t)
-            typehash.update(self.types[t].get_hash())                
+            typehash.update(self.types[t].get_hash().encode('utf-8'))
 
         self.add_type(Type(name, typehash.hexdigest()))
         self.structs[name] = fields
@@ -302,7 +305,7 @@ def parseFile(msgfile, registry, searchpath=[], include=True):
                 break
 
     if msgfile in registry.files:
-        print "%s already processed, ignoring." % msgfile
+        logger.info("%s already processed, ignoring.", msgfile)
         return
 
     registry.files.append(msgfile)
@@ -312,7 +315,7 @@ def parseFile(msgfile, registry, searchpath=[], include=True):
 
     try:
         parse = Messages.parseFile(msgfile, True)
-    except ParseException, e:
+    except ParseException as e:
         raise DescriptionError(msgfile, e.lineno, e.col, e.msg)
 
     try:
@@ -360,9 +363,7 @@ def parseFile(msgfile, registry, searchpath=[], include=True):
 
         registry.sources = {k: remove_duplicates(l) for k, l in registry.sources.items()}
 
-
-    except RuntimeError, ex:
-        print(type(e))
+    except RuntimeError as ex:
+        logger.exception(ex)
         raise DescriptionError(msgfile, 0, 0, str(ex))
-
 
